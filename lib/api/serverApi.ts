@@ -34,9 +34,8 @@ export async function getMe() {
   return data;
 }
 
-export async function checkSession() {
-  const { data } = await api.get<SessionResponse>("/auth/session", {
-    headers: { Cookie: await getCookieHeader() },
+export async function checkSession(cookieHeader?: string) {
+  return api.get<SessionResponse>("/auth/session", {
+    headers: { Cookie: cookieHeader ?? (await getCookieHeader()) },
   });
-  return data;
 }
