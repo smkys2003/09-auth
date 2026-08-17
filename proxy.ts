@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { parseSetCookie } from "cookie";
+import { parseCookie, parseSetCookie, stringifyCookie } from "cookie";
 import { checkSession } from "./lib/api/serverApi";
 
 const privateRoutes = ["/notes", "/profile"];
@@ -35,11 +35,15 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  const forwardedCookies = parseCookie(request.headers.get("cookie") ?? "");
+
   refreshedCookies.forEach((cookie) => {
     const parsedCookie = parseSetCookie(cookie);
 
     if (parsedCookie.value) {
-      request.cookies.set(parsedCookie.name, parsedCookie.value);
+      forwardedCookies[parsedCookie.name] = parsedCookie.value;
+    } else {
+      delete forwardedCookies[parsedCookie.name];
     }
   });
 
@@ -51,7 +55,7 @@ export async function proxy(request: NextRequest) {
     response = NextResponse.redirect(new URL("/profile", request.url));
   } else {
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("cookie", request.cookies.toString());
+    requestHeaders.set("cookie", stringifyCookie(forwardedCookies));
     response = NextResponse.next({ request: { headers: requestHeaders } });
   }
 
@@ -63,5 +67,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: ["/profile/:path*", "/notes/:path*", "/sign-in", "/sign-up"],
 };
