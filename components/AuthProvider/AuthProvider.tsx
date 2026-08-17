@@ -62,7 +62,10 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [pathname, router, setUser, clearIsAuthenticated]);
 
-  if (isChecking) return <p>Loading, please wait...</p>;
+  if (isChecking && isPrivatePath(pathname) && !isAuthenticated) {
+    return <p>Loading, please wait...</p>;
+  }
+
   if (isPrivatePath(pathname) && !isAuthenticated) {
     return null;
   }

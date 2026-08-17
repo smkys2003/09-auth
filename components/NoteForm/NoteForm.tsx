@@ -28,7 +28,10 @@ export default function NoteForm() {
   const mutation = useMutation({
     mutationFn: createNote,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["notes"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["notes"],
+        refetchType: "all",
+      });
       clearDraft();
       router.back();
     },
