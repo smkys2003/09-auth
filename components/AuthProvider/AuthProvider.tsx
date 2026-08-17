@@ -1,74 +1,33 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { checkSession, getMe, logout } from "@/lib/api/clientApi";
+import { useEffect, type ReactNode } from "react";
+import { checkSession, getMe } from "@/lib/api/clientApi";
 import { useAuthStore } from "@/lib/store/authStore";
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
-const privateRoutes = ["/notes", "/profile"];
-
-const isPrivatePath = (pathname: string) =>
-  privateRoutes.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
+export default function AuthProvider({ children }: AuthProviderProps) {
+  const setUser = useAuthStore((state) => state.setUser);
+  const clearIsAuthenticated = useAuthStore(
+    (state) => state.clearIsAuthenticated,
   );
 
-export default function AuthProvider({ children }: AuthProviderProps) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { isAuthenticated, setUser, clearIsAuthenticated } = useAuthStore();
-  const [isChecking, setIsChecking] = useState(true);
-
   useEffect(() => {
-    let isActive = true;
+    const fetchUser = async () => {
+      const isAuthenticated = await checkSession();
 
-    const verifySession = async () => {
-      setIsChecking(true);
-
-      try {
-        const session = await checkSession();
-
-        if (session.success) {
-          const user = await getMe();
-          if (isActive) setUser(user);
-          return;
-        }
-
-        if (isActive) clearIsAuthenticated();
-
-        if (isPrivatePath(pathname)) {
-          try {
-            await logout();
-          } catch {
-            // The session is already invalid, so redirecting is sufficient.
-          }
-          router.replace("/sign-in");
-        }
-      } catch {
-        if (isActive) clearIsAuthenticated();
-        if (isPrivatePath(pathname)) router.replace("/sign-in");
-      } finally {
-        if (isActive) setIsChecking(false);
+      if (isAuthenticated) {
+        const user = await getMe();
+        if (user) setUser(user);
+      } else {
+        clearIsAuthenticated();
       }
     };
 
-    void verifySession();
-
-    return () => {
-      isActive = false;
-    };
-  }, [pathname, router, setUser, clearIsAuthenticated]);
-
-  if (isChecking && isPrivatePath(pathname) && !isAuthenticated) {
-    return <p>Loading, please wait...</p>;
-  }
-
-  if (isPrivatePath(pathname) && !isAuthenticated) {
-    return null;
-  }
+    void fetchUser();
+  }, [setUser, clearIsAuthenticated]);
 
   return children;
 }
